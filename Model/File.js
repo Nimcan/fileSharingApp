@@ -20,4 +20,4 @@ const fileSchema = new  mongoose.Schema({
 
 const fileModel = mongoose.model("File", fileSchema)
 
-exports.default = fileModel
+module.exports = fileModel

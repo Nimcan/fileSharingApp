@@ -1,15 +1,19 @@
 const express = require("express");
 const mongoose = require("mongoose")
 const multer = require("multer")
-const bycrypt = require("bcrypt")
+const path = require("path")
 const File = require("./Model/File")
+const bycrypt = require("bcrypt")
 require("dotenv").config({path: "./config.env"})
 const app = express()
+
+app.use(express.json())
+app.use(express.urlencoded({extended: true}))
 
 const upload = multer({dest: "uploads"})
 
 
-mongoose.connect(process.env.DATABASE_NAME)
+mongoose.connect(process.env.DATABASE.replace("<password>", process.env.DB_PASSWORD))
 
 app.set("view engine", "ejs")
 
@@ -27,11 +31,33 @@ app.post("/upload", upload.single("file"), async(req, res)=>{
     }
 
     const file = await File.create(fileData)
-    console.log(file)
-    res.send(file.originalName)
+    
+    res.render("index", {fileLink: `${req.headers.origin}/file/${file.id}`})
 
 } )
 
+app.route("/file/:id").get(Download).post(Download)
+
+async function Download(req, res){
+    const findFile = await File.findById(req.params.id)
+
+    if(findFile.password != null){
+        if(req.body.password == null){
+            res.render("password")
+            return
+        }
+        if(!(await bycrypt.compare(req.body.password, findFile.password))){
+            res.render("password", {err : true})
+            return
+        }
+    }
+
+    findFile.downloadCount++
+    await findFile.save()
+
+    res.download(findFile.path, findFile.originalName)
+
+}
 
 Port = process.env.PORT || 3000
 
